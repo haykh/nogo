@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"nogo/utils"
 	"strings"
 	"unicode/utf8"
 
@@ -47,6 +48,27 @@ func markdownify(rt notion.RichText) string {
 		prefix += "<span style=\"text-decoration: underline;\">"
 		suffix = "</span>" + suffix
 	}
+	switch rt.Annotations.Color {
+	case "red":
+		prefix += string(utils.ColorRed)
+		suffix = string(utils.ColorReset) + suffix
+	case "green":
+		prefix += string(utils.ColorGreen)
+		suffix = string(utils.ColorReset) + suffix
+	case "blue":
+		prefix += string(utils.ColorBlue)
+		suffix = string(utils.ColorReset) + suffix
+	case "yellow":
+		prefix += string(utils.ColorYellow)
+		suffix = string(utils.ColorReset) + suffix
+	case "purple":
+		prefix += string(utils.ColorPurple)
+		suffix = string(utils.ColorReset) + suffix
+	case "cyan":
+		prefix += string(utils.ColorCyan)
+		suffix = string(utils.ColorReset) + suffix
+	}
+
 	switch rt.Type {
 	case "text":
 		trimmed := strings.Trim(rt.PlainText, " ")
@@ -59,7 +81,26 @@ func markdownify(rt notion.RichText) string {
 	}
 }
 
-func showRichText(rts []notion.RichText, prefix string, level int) {
+func showTitle(title *notion.TitleProperty) {
+	richtext := title.Title[0]
+	showRichText([]notion.RichText{richtext}, "▓ ", 0, utils.ColorCyan)
+	fmt.Println()
+}
+
+func showPageTitle(page *notion.Page) {
+	title := page.Properties["title"].(*notion.TitleProperty)
+	if (page.Icon != nil) && (page.Icon.Type == "emoji") {
+		title.Title[0].PlainText = fmt.Sprintf("%s  %s", string(*page.Icon.Emoji), title.Title[0].PlainText)
+	}
+	showTitle(title)
+}
+
+func showRichText(rts []notion.RichText, prefix string, level int, color ...utils.ColorType) {
+	c := utils.ColorReset
+	if len(color) > 0 {
+		c = color[0]
+	}
+	fmt.Print(string(c))
 	if len(rts) > 0 {
 		plain := prefix
 		for _, rt := range rts {
@@ -70,6 +111,7 @@ func showRichText(rts []notion.RichText, prefix string, level int) {
 	} else {
 		fmt.Println(indent(prefix, level))
 	}
+	fmt.Print(string(utils.ColorReset))
 }
 
 func showParagraph(b notion.Block, level int) {
@@ -97,7 +139,7 @@ func showToDo(b notion.Block, level int) {
 	todo := b.(*notion.ToDoBlock).ToDo
 	var check string
 	if todo.Checked {
-		check = "✓"
+		check = string(utils.ColorGreen) + "✓" + string(utils.ColorReset)
 	} else {
 		check = " "
 	}
@@ -197,4 +239,9 @@ func showImage(b notion.Block, level int) {
 		log.Fatal("unknown image type")
 	}
 	fmt.Println(indent(fmt.Sprintf("![](%s)", url), level))
+}
+
+func showChildPage(b notion.Block, level int) {
+	child := b.(*notion.ChildPageBlock).ChildPage
+	fmt.Println(indent("░ "+child.Title, level))
 }

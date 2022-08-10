@@ -35,7 +35,18 @@ func (c *ParseTemplate) GetSecret(param string) (string, error) {
 	return v.Get(param)
 }
 
-// func (c *ParseTemplate) GetPageID() string {}
+func (c *ParseTemplate) SetSecret(param, newvalue string) error {
+	encoding_key := base64.StdEncoding.EncodeToString([]byte(os.Getenv("USER")))
+	api_fname, ok := c.configs["nogo_secret_file"].(string)
+	if !ok {
+		return fmt.Errorf("`nogo_secret_file` not found in config file.")
+	}
+	v := goencode.File(encoding_key, api_fname)
+	if err := v.Set(param, newvalue); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (p *ParseTemplate) WriteToFile() {
 	g_fname := p.config_file.Fname()
@@ -76,21 +87,28 @@ func (p *ParseTemplate) ReadOrUpdateParameter(param string, default_value string
 	}
 }
 
+func StoreSecret(fname, param, value, key string) {
+	v := goencode.File(key, fname)
+	if err := v.Set(param, value); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func AssertSecretStored(fname, param, key string) {
+	v := goencode.File(key, fname)
+	if _, err := v.Get(param); err != nil {
+		log.Fatal(err)
+	}
+}
+
 func StoreOrCheckSecret(fname, param, description string) {
 	encoding_key := base64.StdEncoding.EncodeToString([]byte(os.Getenv("USER")))
 	defer func() {
-		v := goencode.File(encoding_key, fname)
-		if _, err := v.Get(param); err != nil {
-			log.Fatal(err)
-		}
+		AssertSecretStored(fname, param, encoding_key)
 	}()
 	makeNew := func() {
-		// utils.Message(fmt.Sprintf("%s will be stored in the encrypted %s file.\nWhile this is slightly more secure than storing as flat text,\n... it is not entirely secure, so keep this file private.", description, fname), utils.Warning, true)
 		newparam := utils.PromptString(fmt.Sprintf("Enter your %s:", description), "", utils.Normal)
-		v := goencode.File(encoding_key, fname)
-		if err := v.Set(param, newparam); err != nil {
-			log.Fatal(err)
-		}
+		StoreSecret(fname, param, newparam, encoding_key)
 	}
 	if _, exists := os.Stat(fname); os.IsNotExist(exists) {
 		makeNew()
@@ -111,9 +129,7 @@ func StoreOrCheckSecret(fname, param, description string) {
 }
 
 var localConfig = Config{
-	//!DEBUG:
-	//configPath: os.Getenv("HOME") + "/.config/nogo/",
-	configPath: "./",
+	configPath: os.Getenv("HOME") + "/.config/nogo/",
 	configFile: "config.toml",
 }
 
@@ -133,15 +149,8 @@ func CreateOrReadLocalConfig(silent bool) LocalParseTemplate {
 		if silent {
 			log.Fatal("Config file does not exist.")
 		}
-		msg := fmt.Sprintf("Local configuration file `%s` does not exist.\nCreating?", l_fname)
-		create := utils.PromptBool(msg, true, utils.Warning)
-		if create {
-			utils.CreateFile(l_fname)
-		} else {
-			utils.Message("Local configuration file not created; local defaults will not be saved.", utils.Warning, true)
-			utils.Message(fmt.Sprintf("You can still use the tool if you:\n(1) provide a configuration file via command line arguments;\n\t<EXAMPLE>\n(2) use a file in the default directory: %s.\n\t<EXAMPLE>", localConfig.Fname()), utils.Hint, true)
-			return parsed_l_config
-		}
+		utils.Message(fmt.Sprintf("Local configuration file does not exist.\nCreating:\n`%s`", l_fname), utils.Normal, true)
+		utils.CreateFile(l_fname)
 	} else if silent {
 		toml.DecodeFile(l_fname, &parsed_l_config.configs)
 		return parsed_l_config
@@ -189,4 +198,14 @@ func CreateOrReadLocalConfig(silent bool) LocalParseTemplate {
 // 		parsed_g_config.WriteToFile()
 // 	}
 // 	return parsed_g_config
+// }
+
+// msg := fmt.Sprintf("Local configuration file does not exist.\nCreating?\n`%s`", l_fname)
+// create := utils.PromptBool(msg, true, utils.Warning)
+// if create {
+// 	utils.CreateFile(l_fname)
+// } else {
+// 	utils.Message("Local configuration file not created; local defaults will not be saved.", utils.Warning, true)
+// 	utils.Message(fmt.Sprintf("You can still use the tool if you:\n(1) provide a configuration file via command line arguments;\n\t<EXAMPLE>\n(2) use a file in the default directory: %s.\n\t<EXAMPLE>", localConfig.Fname()), utils.Hint, true)
+// 	return parsed_l_config
 // }
