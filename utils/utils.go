@@ -60,16 +60,14 @@ func CreateFile(fname string) error {
 }
 
 func Message(msg string, msgtype MessageType, newline bool) {
-	if msgtype == Normal {
-		fmt.Println(" ┌-")
-	} else if msgtype == Warning {
-		fmt.Println(" ┌- WARNING")
+	if msgtype == Warning {
+		fmt.Println("  WARNING")
 	} else if msgtype == Hint {
-		fmt.Println(" ┌- HINT")
+		fmt.Println("   HINT")
 	}
-	fmt.Println(strings.Replace(" | "+msg, "\n", "\n | ", -1))
+	fmt.Println(strings.Replace(" : "+msg, "\n", "\n : ", -1))
 	if newline {
-		fmt.Printf(" └-\n")
+		fmt.Printf("\n")
 	}
 }
 
@@ -78,9 +76,9 @@ func PromptBool(msg string, def bool, msgtype MessageType) bool {
 	for {
 		Message(msg, msgtype, false)
 		if def {
-			fmt.Fprint(os.Stderr, " └> [y]/n ")
+			fmt.Fprint(os.Stderr, " :> [y]/n ")
 		} else {
-			fmt.Fprint(os.Stderr, " └> y/[n] ")
+			fmt.Fprint(os.Stderr, " :> y/[n] ")
 		}
 		if s, err := r.ReadString('\n'); err == nil {
 			s = strings.TrimSpace(strings.ToLower(s))
@@ -102,9 +100,9 @@ func PromptString(msg string, def string, msgtype MessageType) string {
 	for {
 		Message(msg, msgtype, false)
 		if def != "" {
-			fmt.Fprint(os.Stderr, fmt.Sprintf(" └> [%s] ", def))
+			fmt.Fprint(os.Stderr, fmt.Sprintf(" :> [%s] ", def))
 		} else {
-			fmt.Fprint(os.Stderr, " └> ")
+			fmt.Fprint(os.Stderr, " :> ")
 		}
 		if s, err := r.ReadString('\n'); err == nil {
 			return strings.TrimSpace(s)

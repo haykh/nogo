@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	notion "nogo/api"
 	"nogo/config"
-	"nogo/utils"
 	"os"
 	"sort"
 
@@ -17,88 +17,72 @@ func main() {
 	app := &cli.App{
 		Name:  "nogo",
 		Usage: "do awesome stuff with notion from cli",
-		Action: func(c *cli.Context) error {
+		Action: func(cCtx *cli.Context) error {
+			cli.ShowAppHelp(cCtx)
 			return nil
 		},
 		Commands: []*cli.Command{
 			{
-				Name:    "configure",
+				Name:    "config",
 				Aliases: []string{"c"},
-				Usage:   "(⚙) configure nogo using prompts",
-				Action: func(c *cli.Context) error {
+				Usage:   "configure nogo",
+				Action: func(cCtx *cli.Context) error {
 					config.CreateOrReadLocalConfig(false)
 					return nil
 				},
 			},
 			{
-				Name:    "ls",
-				Aliases: []string{"l"},
-				Usage:   "(🏠) show the main page",
-				Subcommands: []*cli.Command{
-					{
-						Name:    "main",
-						Aliases: []string{"m"},
-						Usage:   "show the main page",
-						Action: func(cCtx *cli.Context) error {
-							local_config := config.CreateOrReadLocalConfig(true)
-							token, err := local_config.GetSecret("api_token")
-							if err != nil {
-								return err
-							}
-							pageID, err := local_config.GetSecret("main_page_id")
-							if err != nil {
-								return err
-							}
-							return notion.ShowPage(token, pageID)
-						},
-					},
-					{
-						Name:    "todo",
-						Aliases: []string{"t"},
-						Usage:   "show the todo list",
-						Action: func(cCtx *cli.Context) error {
-							local_config := config.CreateOrReadLocalConfig(true)
-							token, err := local_config.GetSecret("api_token")
-							if err != nil {
-								return err
-							}
-							todo_id, err := local_config.GetSecret("todo_page_id")
-							if err != nil {
-								return err
-							}
-							return notion.ShowPage(token, todo_id)
-						},
-					},
+				Name:                   "stack",
+				Aliases:                []string{"s"},
+				Usage:                  "show the stack",
+				UseShortOptionHandling: true,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{Name: "ls", Aliases: []string{"l"}},
+					&cli.StringFlag{Name: "rm", Aliases: []string{"r"}},
+					&cli.StringFlag{Name: "add", Aliases: []string{"a"}},
+					&cli.StringFlag{Name: "done", Aliases: []string{"d"}},
+					&cli.StringFlag{Name: "undone", Aliases: []string{"u"}},
 				},
-			},
-			{
-				Name:    "todo",
-				Aliases: []string{"t"},
-				Usage:   "(✔️) interact with the todo list",
-				Action: func(c *cli.Context) error {
+				Action: func(cCtx *cli.Context) error {
+					show := cCtx.Bool("ls")
+					rm := cCtx.String("rm")
+					add := cCtx.String("add")
+					done := cCtx.String("done")
+					undone := cCtx.String("undone")
+					if !show && rm == "" && add == "" && done == "" {
+						cli.ShowSubcommandHelp(cCtx)
+						return nil
+					}
 					local_config := config.CreateOrReadLocalConfig(true)
-					token, err := local_config.GetSecret("api_token")
-					if err != nil {
+					if token, err := local_config.GetSecret("api_token"); err != nil {
 						return err
-					}
-					pageID, err := local_config.GetSecret("main_page_id")
-					if err != nil {
-						return err
-					}
-					todo_id, err := local_config.GetSecret("todo_page_id")
-					if err != nil {
-						utils.Message("No to-do page found, creating one.", utils.Warning, true)
-						newtodo_id, err := notion.CreatePage(token, pageID, "to-do", "🗒️")
-						if err != nil {
+					} else {
+						if stackID, err := local_config.GetSecret("stack_page_id"); err != nil {
+							return err
+						} else {
+							err = nil
+							if rm != "" {
+								err = notion.RmFromStack(token, stackID, rm)
+								fmt.Println()
+							}
+							if add != "" && err == nil {
+								err = notion.AddToStack(token, stackID, add)
+								fmt.Println()
+							}
+							if done != "" && err == nil {
+								err = notion.MarkAs(token, stackID, done, true)
+								fmt.Println()
+							}
+							if undone != "" && err == nil {
+								err = notion.MarkAs(token, stackID, undone, false)
+								fmt.Println()
+							}
+							if show && err == nil {
+								err = notion.ShowPage(token, stackID)
+							}
 							return err
 						}
-						err = local_config.SetSecret("todo_page_id", newtodo_id)
-						if err != nil {
-							return err
-						}
-						todo_id = newtodo_id
 					}
-					return notion.ShowPage(token, todo_id)
 				},
 			},
 		},

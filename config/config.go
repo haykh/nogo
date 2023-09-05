@@ -163,7 +163,7 @@ func CreateOrReadLocalConfig(silent bool) LocalParseTemplate {
 		log.Fatal("Undefined API token file.")
 	} else {
 		StoreOrCheckSecret(secret_fname, "api_token", "Notion API token")
-		StoreOrCheckSecret(secret_fname, "main_page_id", "Main page ID")
+		StoreOrCheckSecret(secret_fname, "stack_page_id", "Stack page ID")
 	}
 	return parsed_l_config
 }

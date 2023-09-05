@@ -2,9 +2,8 @@ package notionApi
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"nogo/utils"
 	"strings"
 	"unicode/utf8"
@@ -20,10 +19,10 @@ func indent(s string, level int) string {
 	return strings.Repeat(" ", level) + padLinebreak(s, level)
 }
 
-func jsonPrint(v interface{}) {
-	s, _ := json.MarshalIndent(v, "", "  ")
-	fmt.Println(string(s))
-}
+// func jsonPrint(v interface{}) {
+// 	s, _ := json.MarshalIndent(v, "", "  ")
+// 	fmt.Println(string(s))
+// }
 
 func markdownify(rt notion.RichText) string {
 	prefix := ""
@@ -81,21 +80,24 @@ func markdownify(rt notion.RichText) string {
 	}
 }
 
-func showTitle(title *notion.TitleProperty) {
+func showTitle(title *notion.TitleProperty) error {
 	richtext := title.Title[0]
-	showRichText([]notion.RichText{richtext}, "▓ ", 0, utils.ColorCyan)
+	if err := showRichText([]notion.RichText{richtext}, "▓ ", 0, utils.ColorCyan); err != nil {
+		return err
+	}
 	fmt.Println()
+	return nil
 }
 
-func showPageTitle(page *notion.Page) {
+func showPageTitle(page *notion.Page) error {
 	title := page.Properties["title"].(*notion.TitleProperty)
 	if (page.Icon != nil) && (page.Icon.Type == "emoji") {
 		title.Title[0].PlainText = fmt.Sprintf("%s  %s", string(*page.Icon.Emoji), title.Title[0].PlainText)
 	}
-	showTitle(title)
+	return showTitle(title)
 }
 
-func showRichText(rts []notion.RichText, prefix string, level int, color ...utils.ColorType) {
+func showRichText(rts []notion.RichText, prefix string, level int, color ...utils.ColorType) error {
 	c := utils.ColorReset
 	if len(color) > 0 {
 		c = color[0]
@@ -112,30 +114,31 @@ func showRichText(rts []notion.RichText, prefix string, level int, color ...util
 		fmt.Println(indent(prefix, level))
 	}
 	fmt.Print(string(utils.ColorReset))
+	return nil
 }
 
-func showParagraph(b notion.Block, level int) {
+func showParagraph(b notion.Block, level int) error {
 	par := b.(*notion.ParagraphBlock).Paragraph
-	showRichText(par.RichText, "", level)
+	return showRichText(par.RichText, "", level)
 }
 
-func showHeading(b interface{}, level int) {
-	switch b.(type) {
+func showHeading(b interface{}, level int) error {
+	switch b := b.(type) {
 	case *notion.Heading1Block:
-		h1 := b.(*notion.Heading1Block).Heading1
-		showRichText(h1.RichText, "# ", level)
+		h1 := b.Heading1
+		return showRichText(h1.RichText, "# ", level)
 	case *notion.Heading2Block:
-		h2 := b.(*notion.Heading2Block).Heading2
-		showRichText(h2.RichText, "## ", level)
+		h2 := b.Heading2
+		return showRichText(h2.RichText, "## ", level)
 	case *notion.Heading3Block:
-		h3 := b.(*notion.Heading3Block).Heading3
-		showRichText(h3.RichText, "### ", level)
+		h3 := b.Heading3
+		return showRichText(h3.RichText, "### ", level)
 	default:
-		log.Fatal("unknown heading type")
+		return errors.New("unknown heading type")
 	}
 }
 
-func showToDo(b notion.Block, level int) {
+func showToDo(b notion.Block, level int) error {
 	todo := b.(*notion.ToDoBlock).ToDo
 	var check string
 	if todo.Checked {
@@ -143,21 +146,21 @@ func showToDo(b notion.Block, level int) {
 	} else {
 		check = " "
 	}
-	showRichText(todo.RichText, fmt.Sprintf("[%s] ", check), level)
+	return showRichText(todo.RichText, fmt.Sprintf("[%s] ", check), level)
 }
 
-func showBulletedListItem(b notion.Block, level int) {
+func showBulletedListItem(b notion.Block, level int) error {
 	bullet := b.(*notion.BulletedListItemBlock).BulletedListItem
-	showRichText(bullet.RichText, "* ", level)
+	return showRichText(bullet.RichText, "* ", level)
 }
 
-func showNumberedListItem(b notion.Block, level int) {
+func showNumberedListItem(b notion.Block, level int) error {
 	num := b.(*notion.NumberedListItemBlock).NumberedListItem
 	prefix := fmt.Sprintf("%d. ", NumberedListCounter)
-	showRichText(num.RichText, prefix, level)
+	return showRichText(num.RichText, prefix, level)
 }
 
-func showToggle(c *notion.Client, b notion.Block, open bool, level int) {
+func showToggle(c *notion.Client, b notion.Block, open bool, level int) error {
 	tblock := b.(*notion.ToggleBlock)
 	toggle := tblock.Toggle
 	var icon string
@@ -166,69 +169,85 @@ func showToggle(c *notion.Client, b notion.Block, open bool, level int) {
 	} else {
 		icon = "▶"
 	}
-	showRichText(toggle.RichText, fmt.Sprintf("%s ", icon), level)
+	if err := showRichText(toggle.RichText, fmt.Sprintf("%s ", icon), level); err != nil {
+		return err
+	}
 	if open && tblock.HasChildren {
 		children, err := c.Block.GetChildren(context.Background(), notion.BlockID(b.(*notion.ToggleBlock).ID), nil)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		for _, child := range children.Results {
-			ShowBlock(c, child, level+2)
+			if err := ShowBlock(c, child, level+2); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func showEquation(b notion.Block, level int) {
+func showEquation(b notion.Block, level int) error {
 	eqblock := b.(*notion.EquationBlock)
 	equation := eqblock.Equation
 	fmt.Println(indent(fmt.Sprintf("$$ %s $$", equation.Expression), level))
+	return nil
 }
 
-func showCode(b notion.Block, level int) {
+func showCode(b notion.Block, level int) error {
 	code := b.(*notion.CodeBlock).Code
 	lang := code.Language
 	fmt.Println(indent(fmt.Sprintf("```%s", lang), level))
-	showRichText(code.RichText, "", level)
+	if err := showRichText(code.RichText, "", level); err != nil {
+		return err
+	}
 	fmt.Println(indent("```", level))
+	return nil
 }
 
-func showDivider(b notion.Block, level int) {
+func showDivider(b notion.Block, level int) error {
 	fmt.Println(indent("---", level))
+	return nil
 }
 
-func showColumn(c *notion.Client, b notion.Block, level int) {
+func showColumn(c *notion.Client, b notion.Block, level int) error {
 	col := b.(*notion.ColumnBlock)
 	if col.HasChildren {
 		blockID := notion.BlockID(col.ID)
 		children, err := c.Block.GetChildren(context.Background(), blockID, nil)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		for _, child := range children.Results {
-			ShowBlock(c, child, level+2)
+			if err := ShowBlock(c, child, level+2); err != nil {
+				return err
+			}
 		}
 	} else {
 		fmt.Println()
 	}
+	return nil
 }
 
-func showColumnList(c *notion.Client, b notion.Block, level int) {
+func showColumnList(c *notion.Client, b notion.Block, level int) error {
 	clist := b.(*notion.ColumnListBlock)
 	if clist.HasChildren {
 		blockID := notion.BlockID(clist.ID)
 		children, err := c.Block.GetChildren(context.Background(), blockID, nil)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		for _, child := range children.Results {
-			ShowBlock(c, child, level)
+			if err := ShowBlock(c, child, level); err != nil {
+				return err
+			}
 		}
 	} else {
 		fmt.Println()
 	}
+	return nil
 }
 
-func showImage(b notion.Block, level int) {
+func showImage(b notion.Block, level int) error {
 	img := b.(*notion.ImageBlock).Image
 	var url string
 	if img.Type == "external" {
@@ -236,12 +255,14 @@ func showImage(b notion.Block, level int) {
 	} else if img.Type == "file" {
 		url = img.File.URL
 	} else {
-		log.Fatal("unknown image type")
+		return errors.New("unknown image type")
 	}
 	fmt.Println(indent(fmt.Sprintf("![](%s)", url), level))
+	return nil
 }
 
-func showChildPage(b notion.Block, level int) {
+func showChildPage(b notion.Block, level int) error {
 	child := b.(*notion.ChildPageBlock).ChildPage
 	fmt.Println(indent("░ "+child.Title, level))
+	return nil
 }
