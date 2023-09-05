@@ -31,14 +31,14 @@ const (
 	ColorGray   ColorType = "\033[30m"
 )
 
-func isIn(v interface{}, list ...interface{}) bool {
-	for _, l := range list {
-		if l == v {
-			return true
-		}
-	}
-	return false
-}
+// func isIn(v interface{}, list ...interface{}) bool {
+// 	for _, l := range list {
+// 		if l == v {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func CreateFile(fname string) error {
 	f, err := func(p string) (*os.File, error) {
@@ -59,26 +59,33 @@ func CreateFile(fname string) error {
 	return nil
 }
 
-func Message(msg string, msgtype MessageType, newline bool) {
-	if msgtype == Warning {
+func Message(msg string, msgtype MessageType, newline bool, color ...ColorType) {
+	if len(color) > 0 {
+		fmt.Printf("%s", color[0])
+	} else if msgtype == Warning {
+		fmt.Printf("%s", ColorRed)
 		fmt.Println("  WARNING")
 	} else if msgtype == Hint {
+		fmt.Printf("%s", ColorYellow)
 		fmt.Println("   HINT")
 	}
-	fmt.Println(strings.Replace(" : "+msg, "\n", "\n : ", -1))
+	fmt.Println(msg)
 	if newline {
 		fmt.Printf("\n")
 	}
+	if len(color) > 0 {
+		fmt.Printf("%s", ColorReset)
+	}
 }
 
-func PromptBool(msg string, def bool, msgtype MessageType) bool {
+func PromptBool(msg string, def bool, msgtype MessageType, color ...ColorType) bool {
 	r := bufio.NewReader(os.Stdin)
 	for {
-		Message(msg, msgtype, false)
+		Message(msg, msgtype, false, color...)
 		if def {
-			fmt.Fprint(os.Stderr, " :> [y]/n ")
+			fmt.Fprint(os.Stderr, ":> [y]/n ")
 		} else {
-			fmt.Fprint(os.Stderr, " :> y/[n] ")
+			fmt.Fprint(os.Stderr, ":> y/[n] ")
 		}
 		if s, err := r.ReadString('\n'); err == nil {
 			s = strings.TrimSpace(strings.ToLower(s))
@@ -95,14 +102,15 @@ func PromptBool(msg string, def bool, msgtype MessageType) bool {
 	}
 }
 
-func PromptString(msg string, def string, msgtype MessageType) string {
+func PromptString(msg string, def string, msgtype MessageType, color ...ColorType) string {
 	r := bufio.NewReader(os.Stdin)
 	for {
-		Message(msg, msgtype, false)
+		Message(msg, msgtype, false, color...)
 		if def != "" {
-			fmt.Fprint(os.Stderr, fmt.Sprintf(" :> [%s] ", def))
+			pr := fmt.Sprintf(":> [%s] ", def)
+			fmt.Fprint(os.Stderr, pr)
 		} else {
-			fmt.Fprint(os.Stderr, " :> ")
+			fmt.Fprint(os.Stderr, ":> ")
 		}
 		if s, err := r.ReadString('\n'); err == nil {
 			return strings.TrimSpace(s)

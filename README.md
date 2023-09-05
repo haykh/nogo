@@ -5,16 +5,37 @@
 
 ```shell
 # list all commands
+nogo
+# or
 nogo h
 ```
 
-#### `nogo` to-do functionality
-```shell
-# show the to-do list
-nogo ls todo
+First you should configure the Notion API key (encrypted & stored locally in `$HOME/.config/nogo` by default) and the page ID-s of Notion pages you want to interact with.
 
-# add a new to-do item
-nogo todo add "Change the world"
+```shell
+# open configure prompt with
+nogo c
+```
+
+#### `nogo` stack functionality
+```shell
+# show the stack help (todo list)
+nogo s
+
+# list the stack
+nogo s -l
+
+# add a new to-do item & list the stack
+nogo s -la "new todo item"
+nogo s -a "another todo item"
+
+# remove a to-do item that contains "new"
+nogo s -r "new"
+
+# mark a to-do item as done (vague search)
+nogo s -d "anot"
+# mark as not done & list
+nogo s -lu "anot"
 ```
 
 ## To-do
@@ -22,4 +43,4 @@ nogo todo add "Change the world"
 - [x] minimal structure of `cli`
 - [x] notion api
   - [x] key storage/encryption 
-  - [ ] submitting/reading
+  - [x] submitting/reading
