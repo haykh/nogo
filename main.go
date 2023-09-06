@@ -38,49 +38,59 @@ func main() {
 				UseShortOptionHandling: true,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{Name: "ls", Aliases: []string{"l"}},
-					&cli.StringFlag{Name: "rm", Aliases: []string{"r"}},
+					&cli.BoolFlag{Name: "rm", Aliases: []string{"r"}},
 					&cli.StringFlag{Name: "add", Aliases: []string{"a"}},
-					&cli.StringFlag{Name: "done", Aliases: []string{"d"}},
-					&cli.StringFlag{Name: "undone", Aliases: []string{"u"}},
+					&cli.StringFlag{Name: "do", Aliases: []string{"d"}},
+					&cli.StringFlag{Name: "undo", Aliases: []string{"u"}},
+					&cli.StringFlag{Name: "mod", Aliases: []string{"m"}},
 				},
 				Action: func(cCtx *cli.Context) error {
 					show := cCtx.Bool("ls")
-					rm := cCtx.String("rm")
+					rm := cCtx.Bool("rm")
 					add := cCtx.String("add")
-					done := cCtx.String("done")
-					undone := cCtx.String("undone")
-					if !show && rm == "" && add == "" && done == "" {
+					do := cCtx.String("do")
+					undo := cCtx.String("undo")
+					mod := cCtx.String("mod")
+					if !show && !rm && add == "" && do == "" && mod == "" {
 						cli.ShowSubcommandHelp(cCtx)
 						return nil
 					}
-					local_config := config.CreateOrReadLocalConfig(true)
-					if token, err := local_config.GetSecret("api_token"); err != nil {
+					if local_config, err := config.CreateOrReadLocalConfig(true); err != nil {
 						return err
 					} else {
-						if stackID, err := local_config.GetSecret("stack_page_id"); err != nil {
+						if token, err := local_config.GetSecret("api_token"); err != nil {
 							return err
 						} else {
-							err = nil
-							if rm != "" {
-								err = notion.RmFromStack(token, stackID, rm)
-								fmt.Println()
+							if stackID, err := local_config.GetSecret("stack_page_id"); err != nil {
+								return err
+							} else {
+								client := notion.NewClient(token)
+								err = nil
+								if rm {
+									err = notion.RmFromStack(client, stackID)
+									fmt.Println()
+								}
+								if mod != "" && err == nil {
+									err = notion.ModifyStack(client, stackID, mod)
+									fmt.Println()
+								}
+								if add != "" && err == nil {
+									err = notion.AddToStack(client, stackID, add)
+									fmt.Println()
+								}
+								if do != "" && err == nil {
+									err = notion.MarkAs(client, stackID, do, true)
+									fmt.Println()
+								}
+								if undo != "" && err == nil {
+									err = notion.MarkAs(client, stackID, undo, false)
+									fmt.Println()
+								}
+								if show && err == nil {
+									err = notion.ShowPage(client, stackID)
+								}
+								return err
 							}
-							if add != "" && err == nil {
-								err = notion.AddToStack(token, stackID, add)
-								fmt.Println()
-							}
-							if done != "" && err == nil {
-								err = notion.MarkAs(token, stackID, done, true)
-								fmt.Println()
-							}
-							if undone != "" && err == nil {
-								err = notion.MarkAs(token, stackID, undone, false)
-								fmt.Println()
-							}
-							if show && err == nil {
-								err = notion.ShowPage(token, stackID)
-							}
-							return err
 						}
 					}
 				},

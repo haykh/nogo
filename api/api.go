@@ -3,36 +3,45 @@ package notionApi
 import (
 	"context"
 	"fmt"
+	"nogo/utils"
 	"regexp"
 	"strconv"
 	"strings"
 
+	survey "github.com/AlecAivazis/survey/v2"
 	notion "github.com/jomei/notionapi"
 )
 
-func ShowPage(token, pageID string) error {
-	client := notion.NewClient(notion.Token(token))
-	if page, err := client.Page.Get(context.Background(), notion.PageID(pageID)); err != nil {
-		return err
+type ToDoStack = []string
+
+func NewClient(token string) *notion.Client {
+	return notion.NewClient(notion.Token(token))
+}
+
+func ParseStack(client *notion.Client, pageID string) (*ToDoStack, error) {
+	if blocks, err := client.Block.GetChildren(context.Background(), notion.BlockID(pageID), nil); err != nil {
+		return nil, err
 	} else {
-		if err := showPageTitle(page); err != nil {
-			return err
+		if len(blocks.Results) == 0 {
+			return nil, fmt.Errorf("no todo items found")
 		}
-		if blocks, err := client.Block.GetChildren(context.Background(), notion.BlockID(pageID), nil); err != nil {
-			return err
+		if entries, err := client.Block.GetChildren(context.Background(), blocks.Results[0].GetID(), nil); err != nil {
+			return nil, err
 		} else {
-			for _, block := range blocks.Results {
-				if err := ShowBlock(client, block, 0); err != nil {
-					return err
+			todo_stack := ToDoStack{}
+			for _, entry := range entries.Results {
+				if todo_str, err := Block2String(client, entry, 0); err != nil {
+					return nil, err
+				} else {
+					todo_stack = append(todo_stack, utils.Clean(todo_str))
 				}
 			}
-			return nil
+			return &todo_stack, nil
 		}
 	}
 }
 
-func FindInStack(token, pageID, request string) (notion.Block, error) {
-	client := notion.NewClient(notion.Token(token))
+func FindInStack(client *notion.Client, pageID, request string) (notion.Block, error) {
 	if blocks, err := client.Block.GetChildren(context.Background(), notion.BlockID(pageID), nil); err != nil {
 		return nil, err
 	} else {
@@ -80,8 +89,7 @@ func FindInStack(token, pageID, request string) (notion.Block, error) {
 	}
 }
 
-func AddToStack(token, pageID, request string) error {
-	client := notion.NewClient(notion.Token(token))
+func AddToStack(client *notion.Client, pageID, request string) error {
 	if blocks, err := client.Block.GetChildren(context.Background(), notion.BlockID(pageID), nil); err != nil {
 		return err
 	} else {
@@ -122,24 +130,41 @@ func AddToStack(token, pageID, request string) error {
 	}
 }
 
-func RmFromStack(token, pageID, request string) error {
-	if block, err := FindInStack(token, pageID, request); err != nil {
+func ModifyStack(client *notion.Client, pageID, request string) error {
+	fmt.Println(request)
+	return nil
+}
+
+func RmFromStack(client *notion.Client, pageID string) error {
+	if stack, err := ParseStack(client, pageID); err != nil {
 		return err
 	} else {
-		client := notion.NewClient(notion.Token(token))
-		if _, err := client.Block.Delete(context.Background(), block.GetID()); err != nil {
-			return err
-		} else {
-			return ShowBlock(client, block, 1)
-		}
+		entry_idx := -1
+		entries := []string{}
+		entries = append(entries, *stack...)
+		survey.AskOne(&survey.Select{
+			Message: "pick to rm:",
+			Options: entries,
+		}, &entry_idx)
+		// if entry_dx >= 0 && entry_idx < len(entries)
+		fmt.Printf("selected %d\n", entry_idx)
+		return nil
+		// if block, err := FindInStack(client, pageID, entry); err != nil {
+		// 	return err
+		// } else {
+		// 	if _, err := client.Block.Delete(context.Background(), block.GetID()); err != nil {
+		// 		return err
+		// 	} else {
+		// 		return ShowBlock(client, block, 1)
+		// 	}
+		// }
 	}
 }
 
-func MarkAs(token, pageID, request string, checked bool) error {
-	if block, err := FindInStack(token, pageID, request); err != nil {
+func MarkAs(client *notion.Client, pageID, request string, checked bool) error {
+	if block, err := FindInStack(client, pageID, request); err != nil {
 		return nil
 	} else {
-		client := notion.NewClient(notion.Token(token))
 		if blocknew, err := client.Block.Update(context.Background(), block.GetID(), &notion.BlockUpdateRequest{
 			ToDo: &notion.ToDo{
 				Checked: checked,
@@ -157,10 +182,7 @@ func MarkAs(token, pageID, request string, checked bool) error {
 	}
 }
 
-var NumberedListCounter int
-
-func CreatePage(token, parentID string, title, icon string) (string, error) {
-	client := notion.NewClient(notion.Token(token))
+func CreatePage(client *notion.Client, parentID string, title, icon string) (string, error) {
 	parent := notion.Parent{
 		Type:   "page_id",
 		PageID: notion.PageID(parentID),
@@ -185,62 +207,9 @@ func CreatePage(token, parentID string, title, icon string) (string, error) {
 			Emoji: &emoji,
 		},
 	}
-	newpage, err := client.Page.Create(context.Background(), &pagerequest)
-	if err != nil {
+	if newpage, err := client.Page.Create(context.Background(), &pagerequest); err != nil {
 		return "", err
-	}
-	return string(newpage.ID), nil
-}
-
-func ShowBlock(c *notion.Client, b notion.Block, level int) error {
-	if b.GetType() == "numbered_list_item" {
-		defer func() {
-			NumberedListCounter++
-		}()
 	} else {
-		defer func() {
-			NumberedListCounter = 1
-		}()
+		return string(newpage.ID), nil
 	}
-	switch b.GetType() {
-	case "heading_1", "heading_2", "heading_3":
-		return showHeading(b, level)
-	case "paragraph":
-		return showParagraph(b, level)
-	case "to_do":
-		return showToDo(b, level)
-	case "bulleted_list_item":
-		return showBulletedListItem(b, level)
-	case "numbered_list_item":
-		return showNumberedListItem(b, level)
-	case "toggle":
-		return showToggle(c, b, true, level)
-	case "equation":
-		return showEquation(b, level)
-	case "code":
-		return showCode(b, level)
-	case "divider":
-		return showDivider(b, level)
-	case "column_list":
-		return showColumnList(c, b, level)
-	case "column":
-		return showColumn(c, b, level)
-	case "image":
-		return showImage(b, level)
-	case "child_page":
-		return showChildPage(b, level)
-	case "synced_block":
-		blocks, err := c.Block.GetChildren(context.Background(), notion.BlockID(b.(*notion.SyncedBlock).ID), nil)
-		if err != nil {
-			return err
-		}
-		for _, block := range blocks.Results {
-			if err := ShowBlock(c, block, level); err != nil {
-				return err
-			}
-		}
-	default:
-		return fmt.Errorf("unknown block type: %s", b.GetType())
-	}
-	return nil
 }

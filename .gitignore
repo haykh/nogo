@@ -22,4 +22,4 @@ go.work
 
 # temporary files
 config.toml
-nogo_secret
+nogo_vault

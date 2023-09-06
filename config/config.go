@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
-	"log"
 	utils "nogo/utils"
 	"os"
 
@@ -27,9 +26,9 @@ type ParseTemplate struct {
 
 func (c *ParseTemplate) GetSecret(param string) (string, error) {
 	encoding_key := base64.StdEncoding.EncodeToString([]byte(os.Getenv("USER")))
-	api_fname, ok := c.configs["nogo_secret_file"].(string)
+	api_fname, ok := c.configs["nogo_vault"].(string)
 	if !ok {
-		return "", fmt.Errorf("`nogo_secret_file` not found in config file")
+		return "", fmt.Errorf("`nogo_vault` not found in config file")
 	}
 	v := goencode.File(encoding_key, api_fname)
 	return v.Get(param)
@@ -37,9 +36,9 @@ func (c *ParseTemplate) GetSecret(param string) (string, error) {
 
 func (c *ParseTemplate) SetSecret(param, newvalue string) error {
 	encoding_key := base64.StdEncoding.EncodeToString([]byte(os.Getenv("USER")))
-	api_fname, ok := c.configs["nogo_secret_file"].(string)
+	api_fname, ok := c.configs["nogo_vault"].(string)
 	if !ok {
-		return fmt.Errorf("`nogo_secret_file` not found in config file")
+		return fmt.Errorf("`nogo_vault` not found in config file")
 	}
 	v := goencode.File(encoding_key, api_fname)
 	if err := v.Set(param, newvalue); err != nil {
@@ -48,85 +47,105 @@ func (c *ParseTemplate) SetSecret(param, newvalue string) error {
 	return nil
 }
 
-func (p *ParseTemplate) WriteToFile() {
+func (p *ParseTemplate) WriteToFile() error {
 	g_fname := p.config_file.Fname()
 	if _, exists := os.Stat(g_fname); os.IsNotExist(exists) {
-		log.Fatal("Config file does not exist.")
+		return fmt.Errorf("%sconfig file does not exist%s", utils.ColorRed, utils.ColorReset)
 	} else {
 		if err := os.Remove(g_fname); err != nil {
-			log.Fatal(err)
+			return err
 		}
-		utils.CreateFile(g_fname)
+		if err := utils.CreateFile(g_fname); err != nil {
+			return err
+		}
 	}
-	f, err := os.OpenFile(g_fname, os.O_WRONLY, 0777)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := toml.NewEncoder(f).Encode(p.configs); err != nil {
-		log.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		log.Fatal(err)
+	if f, err := os.OpenFile(g_fname, os.O_WRONLY, 0777); err != nil {
+		return err
+	} else {
+		if err := toml.NewEncoder(f).Encode(p.configs); err != nil {
+			return err
+		} else {
+			if err := f.Close(); err != nil {
+				return err
+			} else {
+				return nil
+			}
+		}
 	}
 }
 
-func (p *ParseTemplate) ReadOrUpdateParameter(param string, default_value string) {
-	if v, exists := p.configs[param]; !exists {
-		p.configs[param] = utils.PromptString(fmt.Sprintf("`%s` not found\n  %s\n\nEnter new path or leave blank for default", param, p.config_file.Fname()), default_value, utils.Normal, utils.ColorRed)
-		if p.configs[param] == "" {
-			p.configs[param] = default_value
-		}
-		p.WriteToFile()
+func (p *ParseTemplate) ReadOrUpdateParameter(param string, default_value string) error {
+	defer func() {
 		fmt.Println()
+	}()
+	if v, exists := p.configs[param]; !exists {
+		p.configs[param] = default_value
+		if value, err := utils.PromptString(fmt.Sprintf("`%s` not found\n  %s\n\nenter new path or leave blank for default", param, p.config_file.Fname()), default_value); err != nil {
+			return err
+		} else {
+			if value != "" {
+				p.configs[param] = value
+			}
+		}
+		return p.WriteToFile()
 	} else {
 		v_str := v.(string)
-		leave := utils.PromptString(fmt.Sprintf("`%s` found\nEnter new value or leave blank to use existing value", param), v_str, utils.Normal, utils.ColorBlue)
-		if leave != "" {
-			p.configs[param] = leave
-			p.WriteToFile()
+		if leave, err := utils.PromptString(fmt.Sprintf("`%s` found\nenter new value or leave blank to use existing value", param), v_str); err != nil {
+			return err
+		} else {
+			if leave != "" {
+				p.configs[param] = leave
+				return p.WriteToFile()
+			} else {
+				return nil
+			}
 		}
-		fmt.Println()
 	}
 }
 
-func StoreSecret(fname, param, value, key string) {
+func StoreSecret(fname, param, value, key string) error {
 	v := goencode.File(key, fname)
-	if err := v.Set(param, value); err != nil {
-		log.Fatal(err)
-	}
+	return v.Set(param, value)
 }
 
-func AssertSecretStored(fname, param, key string) {
+func AssertSecretStored(fname, param, key string) error {
 	v := goencode.File(key, fname)
-	if _, err := v.Get(param); err != nil {
-		log.Fatal(err)
-	}
+	_, err := v.Get(param)
+	return err
 }
 
-func StoreOrCheckSecret(fname, param, description string) {
+func StoreOrCheckSecret(fname, param, description string) error {
 	encoding_key := base64.StdEncoding.EncodeToString([]byte(os.Getenv("USER")))
 	defer func() {
 		AssertSecretStored(fname, param, encoding_key)
 	}()
-	makeNew := func() {
-		newparam := utils.PromptString(fmt.Sprintf("Enter your %s:", description), "", utils.Normal)
-		StoreSecret(fname, param, newparam, encoding_key)
+	makeNew := func() error {
+		if newparam, err := utils.PromptString(fmt.Sprintf("enter your %s:", description), ""); err != nil {
+			return err
+		} else {
+			return StoreSecret(fname, param, newparam, encoding_key)
+		}
 	}
 	if _, exists := os.Stat(fname); os.IsNotExist(exists) {
-		makeNew()
+		return makeNew()
 	} else {
 		v := goencode.File(encoding_key, fname)
 		_, err := v.Get(param)
 		v.List()
 		if err != nil {
-			makeNew()
+			return makeNew()
 		} else {
-			overwrite := utils.PromptBool(fmt.Sprintf("nogo secret file `%s` contains `%s`\nOverwrite with the new parameter?", fname, param), false, utils.Normal, utils.ColorBlue)
-			if overwrite {
-				v.Delete(param)
-				makeNew()
+			if overwrite, err := utils.PromptBool(fmt.Sprintf("vault contains `%s`\noverwrite?", param), false); err != nil {
+				return err
+			} else {
+				if overwrite {
+					if err := v.Delete(param); err != nil {
+						return err
+					}
+					return makeNew()
+				}
+				return nil
 			}
-			fmt.Println()
 		}
 	}
 }
@@ -140,7 +159,7 @@ type LocalParseTemplate struct {
 	ParseTemplate
 }
 
-func CreateOrReadLocalConfig(silent bool) LocalParseTemplate {
+func CreateOrReadLocalConfig(silent bool) (LocalParseTemplate, error) {
 	parsed_l_config := LocalParseTemplate{
 		ParseTemplate{
 			config_file: localConfig,
@@ -150,23 +169,31 @@ func CreateOrReadLocalConfig(silent bool) LocalParseTemplate {
 	l_fname := parsed_l_config.config_file.Fname()
 	if _, exists := os.Stat(l_fname); os.IsNotExist(exists) {
 		if silent {
-			log.Fatal("Config file does not exist.")
+			return LocalParseTemplate{}, fmt.Errorf("config file does not exist")
 		}
-		utils.Message(fmt.Sprintf("Local configuration file does not exist\n  Creating:\n  %s\n", l_fname), utils.Normal, true, utils.ColorRed)
-		utils.CreateFile(l_fname)
+		utils.Message(fmt.Sprintf("local config file does not exist. creating...\n  %s", l_fname), utils.Normal, true)
+		if err := utils.CreateFile(l_fname); err != nil {
+			return LocalParseTemplate{}, err
+		}
 	} else if silent {
-		toml.DecodeFile(l_fname, &parsed_l_config.configs)
-		return parsed_l_config
+		if _, err := toml.DecodeFile(l_fname, &parsed_l_config.configs); err != nil {
+			return LocalParseTemplate{}, err
+		}
+		return parsed_l_config, nil
 	}
-	utils.Message(fmt.Sprintf("Reading local configuration file:\n  %s", l_fname), utils.Normal, true)
-	toml.DecodeFile(l_fname, &parsed_l_config.configs)
-	parsed_l_config.ReadOrUpdateParameter("nogo_secret_file", parsed_l_config.config_file.configPath+"nogo_secret")
+	utils.Message(fmt.Sprintf("Reading local config file...\n  %s", l_fname), utils.Normal, true)
+	if _, err := toml.DecodeFile(l_fname, &parsed_l_config.configs); err != nil {
+		return LocalParseTemplate{}, err
+	}
+	if err := parsed_l_config.ReadOrUpdateParameter("nogo_vault", parsed_l_config.config_file.configPath+"nogo_vault"); err != nil {
+		return LocalParseTemplate{}, err
+	}
 
-	if secret_fname, ok := parsed_l_config.configs["nogo_secret_file"].(string); !ok {
-		log.Fatal("Undefined API token file.")
+	if secret_fname, ok := parsed_l_config.configs["nogo_vault"].(string); !ok {
+		return LocalParseTemplate{}, fmt.Errorf("undefined API token file")
 	} else {
 		StoreOrCheckSecret(secret_fname, "api_token", "Notion API token")
 		StoreOrCheckSecret(secret_fname, "stack_page_id", "Stack page ID")
 	}
-	return parsed_l_config
+	return parsed_l_config, nil
 }

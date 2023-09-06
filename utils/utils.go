@@ -1,12 +1,13 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	survey "github.com/AlecAivazis/survey/v2"
 )
 
 type MessageType int64
@@ -18,7 +19,9 @@ const (
 	Error
 )
 
-type ColorType string
+type TextStyle = string
+type ColorType = string
+type HighlightType = string
 
 const (
 	ColorReset  ColorType = "\033[0m"
@@ -31,14 +34,22 @@ const (
 	ColorGray   ColorType = "\033[30m"
 )
 
-// func isIn(v interface{}, list ...interface{}) bool {
-// 	for _, l := range list {
-// 		if l == v {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+const (
+	HiStrike HighlightType = "\033[9m"
+	HiReset  HighlightType = "\033[0m"
+)
+
+func Clean(str string) string {
+	colors := []ColorType{ColorReset, ColorRed, ColorGreen, ColorBlue, ColorCyan, ColorYellow, ColorPurple, ColorGray}
+	highlights := []HighlightType{HiStrike, HiReset}
+	for _, c := range colors {
+		str = strings.ReplaceAll(str, c, "")
+	}
+	for _, h := range highlights {
+		str = strings.ReplaceAll(str, h, "")
+	}
+	return strings.Trim(str, " \n")
+}
 
 func CreateFile(fname string) error {
 	f, err := func(p string) (*os.File, error) {
@@ -78,45 +89,29 @@ func Message(msg string, msgtype MessageType, newline bool, color ...ColorType) 
 	}
 }
 
-func PromptBool(msg string, def bool, msgtype MessageType, color ...ColorType) bool {
-	r := bufio.NewReader(os.Stdin)
-	for {
-		Message(msg, msgtype, false, color...)
-		if def {
-			fmt.Fprint(os.Stderr, ":> [y]/n ")
-		} else {
-			fmt.Fprint(os.Stderr, ":> y/[n] ")
-		}
-		if s, err := r.ReadString('\n'); err == nil {
-			s = strings.TrimSpace(strings.ToLower(s))
-			if s == "y" || s == "n" || s == "" {
-				if s == "" {
-					return def
-				} else {
-					return s == "y"
-				}
-			}
-		} else {
-			log.Fatal(err)
-		}
+func PromptBool(msg string, def bool) (bool, error) {
+	val := false
+	prompt := &survey.Confirm{
+		Message: msg,
+		Default: def,
+	}
+	if err := survey.AskOne(prompt, &val); err != nil {
+		return false, err
+	} else {
+		return val, nil
 	}
 }
 
-func PromptString(msg string, def string, msgtype MessageType, color ...ColorType) string {
-	r := bufio.NewReader(os.Stdin)
-	for {
-		Message(msg, msgtype, false, color...)
-		if def != "" {
-			pr := fmt.Sprintf(":> [%s] ", def)
-			fmt.Fprint(os.Stderr, pr)
-		} else {
-			fmt.Fprint(os.Stderr, ":> ")
-		}
-		if s, err := r.ReadString('\n'); err == nil {
-			return strings.TrimSpace(s)
-		} else {
-			log.Fatal(err)
-		}
+func PromptString(msg string, def string) (string, error) {
+	val := ""
+	prompt := &survey.Input{
+		Message: msg,
+		Default: def,
+	}
+	if err := survey.AskOne(prompt, &val); err != nil {
+		return "", err
+	} else {
+		return val, nil
 	}
 }
 
