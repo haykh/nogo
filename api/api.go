@@ -36,9 +36,11 @@ func AddToStack(client *notionapi.Client, pageID string) error {
 		return err
 	} else {
 		new_item := ""
-		survey.AskOne(&survey.Input{
+		if err := survey.AskOne(&survey.Input{
 			Message: "new entry:",
-		}, &new_item)
+		}, &new_item); err != nil {
+			return err
+		}
 		if new_item == "" {
 			return errors.New("empty entry")
 		}
@@ -77,24 +79,28 @@ func ModifyStack(client *notionapi.Client, pageID string) error {
 			return err
 		} else {
 			idx := -1
-			survey.AskOne(
+			if err := survey.AskOne(
 				&survey.Select{
 					Message: "modify:",
 					Options: *stack,
 				},
 				&idx,
 				survey.WithPageSize(10),
-			)
+			); err != nil {
+				return err
+			}
 			if idx == -1 {
 				return errors.New("no selection")
 			}
 			new_item := ""
-			survey.AskOne(&survey.Input{
+			if err := survey.AskOne(&survey.Input{
 				Message: "new entry:",
 				Suggest: func(string) []string {
 					return []string{(*plain)[idx]}
 				},
-			}, &new_item)
+			}, &new_item); err != nil {
+				return err
+			}
 			if new_item == "" {
 				return errors.New("empty entry")
 			}
@@ -125,7 +131,7 @@ func RmFromStack(client *notionapi.Client, pageID string) error {
 			return err
 		} else {
 			torm := []int{}
-			survey.AskOne(
+			if err := survey.AskOne(
 				&survey.MultiSelect{
 					Message: "pick to rm:",
 					Options: *stack,
@@ -137,7 +143,9 @@ func RmFromStack(client *notionapi.Client, pageID string) error {
 					icons.MarkedOption.Format = "red"
 					icons.UnmarkedOption.Text = " "
 				}),
-			)
+			); err != nil {
+				return err
+			}
 			for _, idx := range torm {
 				if _, err := client.Block.Delete(context.Background(), blocks[idx].GetID()); err != nil {
 					return err
@@ -162,7 +170,7 @@ func ToggleStack(client *notionapi.Client, pageID string) error {
 				}
 			}
 			selected := []int{}
-			survey.AskOne(
+			if err := survey.AskOne(
 				&survey.MultiSelect{
 					Message: "toggle:",
 					Options: *stack,
@@ -176,7 +184,9 @@ func ToggleStack(client *notionapi.Client, pageID string) error {
 					icons.MarkedOption.Format = "green"
 					icons.UnmarkedOption.Text = "[ ]"
 				}),
-			)
+			); err != nil {
+				return err
+			}
 			for mi, m := range *marked {
 				isin := utils.IsIn(mi, selected)
 				if (!m && isin) || (m && !isin) {
