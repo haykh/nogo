@@ -1,7 +1,7 @@
 # `nogo`
-## Minimalistic `go`-based `cli` app to interact with Notion
+## minimalistic `go`-based `cli` app to interact with Notion
 
-### Usage
+### usage
 
 ```shell
 # list all commands
@@ -10,7 +10,7 @@ nogo
 nogo h
 ```
 
-First you should configure the Notion API key (encrypted & stored locally in `$HOME/.config/nogo` by default) and the page ID-s of Notion pages you want to interact with.
+first you should configure the Notion API key (encrypted & stored locally in `$HOME/.config/nogo` by default) and the page ID you want to interact with.
 
 ```shell
 # open configure prompt with
@@ -19,28 +19,28 @@ nogo c
 
 #### `nogo` stack functionality
 ```shell
-# show the stack help (todo list)
+# show the stack
 nogo s
 
-# list the stack
-nogo s -l
-
-# add a new to-do item & list the stack
-nogo s -la "new todo item"
-nogo s -a "another todo item"
-
-# remove a to-do item that contains "new"
-nogo s -r "new"
-
-# mark a to-do item as done (vague search)
-nogo s -d "anot"
-# mark as not done & list
-nogo s -lu "anot"
+# show the help message stack
+nogo s -h
 ```
 
-## To-do
+current commands:
+```shell
+NAME:
+   nogo stack - show the stack
 
-- [x] minimal structure of `cli`
-- [x] notion api
-  - [x] key storage/encryption 
-  - [x] submitting/reading
+USAGE:
+   nogo stack command [command options] [arguments...]
+
+COMMANDS:
+   add, a     add a new entry to the stack
+   mod, m     modify a stack entry
+   toggle, t  toggle stack entries
+   rm, r      remove stack entries
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+```

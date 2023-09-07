@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"cmp"
 	"fmt"
 	"log"
 	"os"
@@ -38,6 +39,15 @@ const (
 	HiStrike HighlightType = "\033[9m"
 	HiReset  HighlightType = "\033[0m"
 )
+
+func IsIn[T cmp.Ordered](element T, array []T) bool {
+	for _, e := range array {
+		if e == element {
+			return true
+		}
+	}
+	return false
+}
 
 func Clean(str string) string {
 	colors := []ColorType{ColorReset, ColorRed, ColorGreen, ColorBlue, ColorCyan, ColorYellow, ColorPurple, ColorGray}

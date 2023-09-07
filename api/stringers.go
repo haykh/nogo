@@ -309,7 +309,7 @@ func Image2String(b notion.Block, level int) string {
 	} else if img.Type == "file" {
 		url = img.File.URL
 	} else {
-		url = fmt.Sprintf("%s", img.Type)
+		url = string(img.Type)
 	}
 	return indent(fmt.Sprintf("![](%s)", url), level)
 }
