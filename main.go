@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/haykh/nogo/config"
 
@@ -15,9 +17,53 @@ import (
 func main() {
 	log.SetPrefix("[ nogo ERROR ]: ")
 	log.SetFlags(0)
+	cli.AppHelpTemplate = `{{.Name}} v{{.Version}} [by {{range .Authors}}{{ . }}{{end}}]
+
+	 {{.Usage}}
+
+USAGE:
+   {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}
+{{if .Commands}}
+COMMANDS:
+{{range .Commands}}{{if not .HideHelp}}   {{join .Names ", "}}{{ "\t"}}{{.Usage}}{{ "\n" }}{{end}}{{end}}{{end}}{{if .VisibleFlags}}
+GLOBAL OPTIONS:
+   {{range .VisibleFlags}}{{.}}
+   {{end}}{{end}}
+`
+	tmpls := []*string{
+		&cli.CommandHelpTemplate,
+		&cli.SubcommandHelpTemplate,
+	}
+	old := []string{
+		"NAME:",
+		"USAGE:",
+		"COMMANDS:",
+		"OPTIONS:",
+		"[arguments...]",
+		"options",
+	}
+	new := []string{
+		"name:",
+		"usage:",
+		"commands:",
+		"options:",
+		"[args...]",
+		"opts",
+	}
+	for _, tmpl := range tmpls {
+		for i, o := range old {
+			*tmpl = strings.ReplaceAll(*tmpl, o, new[i])
+		}
+	}
+
 	app := &cli.App{
-		Name:  "nogo",
-		Usage: "do awesome stuff with notion from cli",
+		Name:     "nogo",
+		Version:  "1.0.3",
+		Compiled: time.Now(),
+		Authors: []*cli.Author{{
+			Name: "@haykh",
+		}},
+		Usage: "do awesome stuff with notion from a cli",
 		Action: func(cCtx *cli.Context) error {
 			return cli.ShowAppHelp(cCtx)
 		},
