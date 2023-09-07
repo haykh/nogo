@@ -180,11 +180,14 @@ func ToggleStack(client *notionapi.Client, pageID string) error {
 			for mi, m := range *marked {
 				isin := utils.IsIn(mi, selected)
 				if (!m && isin) || (m && !isin) {
-					if _, err := client.Block.Update(context.Background(), blocks[mi].GetID(), &notionapi.BlockUpdateRequest{
-						ToDo: &notionapi.ToDo{
-							Checked: isin,
-						},
-					}); err != nil {
+					request := blocks[mi].(*notionapi.ToDoBlock).ToDo
+					request.Checked = isin
+					if _, err := client.Block.Update(
+						context.Background(),
+						blocks[mi].GetID(),
+						&notionapi.BlockUpdateRequest{
+							ToDo: &request,
+						}); err != nil {
 						return err
 					}
 				}
