@@ -1,16 +1,17 @@
-package notionApi
+package api
 
 import (
 	"context"
 	"errors"
-	"nogo/config"
-	"nogo/utils"
+
+	"github.com/haykh/nogo/config"
+	"github.com/haykh/nogo/utils"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	notion "github.com/jomei/notionapi"
+	notionapi "github.com/jomei/notionapi"
 )
 
-func InitAPI() (*notion.Client, string, error) {
+func InitAPI() (*notionapi.Client, string, error) {
 	if loc_config, err := config.CreateOrReadLocalConfig(true); err != nil {
 		return nil, "", err
 	} else {
@@ -26,11 +27,11 @@ func InitAPI() (*notion.Client, string, error) {
 	}
 }
 
-func NewClient(token string) *notion.Client {
-	return notion.NewClient(notion.Token(token))
+func NewClient(token string) *notionapi.Client {
+	return notionapi.NewClient(notionapi.Token(token))
 }
 
-func AddToStack(client *notion.Client, pageID string) error {
+func AddToStack(client *notionapi.Client, pageID string) error {
 	if parent, err := GetStack(client, pageID); err != nil {
 		return err
 	} else {
@@ -41,17 +42,17 @@ func AddToStack(client *notion.Client, pageID string) error {
 		if new_item == "" {
 			return errors.New("empty entry")
 		}
-		if _, err := client.Block.AppendChildren(context.Background(), parent.GetID(), &notion.AppendBlockChildrenRequest{
-			Children: []notion.Block{
-				&notion.ToDoBlock{
-					BasicBlock: notion.BasicBlock{
-						Object: notion.ObjectTypeBlock,
-						Type:   notion.BlockTypeToDo,
+		if _, err := client.Block.AppendChildren(context.Background(), parent.GetID(), &notionapi.AppendBlockChildrenRequest{
+			Children: []notionapi.Block{
+				&notionapi.ToDoBlock{
+					BasicBlock: notionapi.BasicBlock{
+						Object: notionapi.ObjectTypeBlock,
+						Type:   notionapi.BlockTypeToDo,
 					},
-					ToDo: notion.ToDo{
-						RichText: []notion.RichText{
+					ToDo: notionapi.ToDo{
+						RichText: []notionapi.RichText{
 							{
-								Text: notion.Text{
+								Text: &notionapi.Text{
 									Content: new_item,
 								},
 							},
@@ -68,7 +69,7 @@ func AddToStack(client *notion.Client, pageID string) error {
 	}
 }
 
-func ModifyStack(client *notion.Client, pageID string) error {
+func ModifyStack(client *notionapi.Client, pageID string) error {
 	if blocks, err := GetStackEntries(client, pageID); err != nil {
 		return err
 	} else {
@@ -97,11 +98,11 @@ func ModifyStack(client *notion.Client, pageID string) error {
 			if new_item == "" {
 				return errors.New("empty entry")
 			}
-			if _, err := client.Block.Update(context.Background(), blocks[idx].GetID(), &notion.BlockUpdateRequest{
-				ToDo: &notion.ToDo{
-					RichText: []notion.RichText{
+			if _, err := client.Block.Update(context.Background(), blocks[idx].GetID(), &notionapi.BlockUpdateRequest{
+				ToDo: &notionapi.ToDo{
+					RichText: []notionapi.RichText{
 						{
-							Text: notion.Text{
+							Text: &notionapi.Text{
 								Content: new_item,
 							},
 						},
@@ -116,7 +117,7 @@ func ModifyStack(client *notion.Client, pageID string) error {
 	}
 }
 
-func RmFromStack(client *notion.Client, pageID string) error {
+func RmFromStack(client *notionapi.Client, pageID string) error {
 	if blocks, err := GetStackEntries(client, pageID); err != nil {
 		return err
 	} else {
@@ -147,7 +148,7 @@ func RmFromStack(client *notion.Client, pageID string) error {
 	}
 }
 
-func ToggleStack(client *notion.Client, pageID string) error {
+func ToggleStack(client *notionapi.Client, pageID string) error {
 	if blocks, err := GetStackEntries(client, pageID); err != nil {
 		return err
 	} else {
@@ -179,8 +180,8 @@ func ToggleStack(client *notion.Client, pageID string) error {
 			for mi, m := range *marked {
 				isin := utils.IsIn(mi, selected)
 				if (!m && isin) || (m && !isin) {
-					if _, err := client.Block.Update(context.Background(), blocks[mi].GetID(), &notion.BlockUpdateRequest{
-						ToDo: &notion.ToDo{
+					if _, err := client.Block.Update(context.Background(), blocks[mi].GetID(), &notionapi.BlockUpdateRequest{
+						ToDo: &notionapi.ToDo{
 							Checked: isin,
 						},
 					}); err != nil {
@@ -193,27 +194,27 @@ func ToggleStack(client *notion.Client, pageID string) error {
 	}
 }
 
-func CreatePage(client *notion.Client, parentID string, title, icon string) (string, error) {
-	parent := notion.Parent{
+func CreatePage(client *notionapi.Client, parentID string, title, icon string) (string, error) {
+	parent := notionapi.Parent{
 		Type:   "page_id",
-		PageID: notion.PageID(parentID),
+		PageID: notionapi.PageID(parentID),
 	}
-	emoji := notion.Emoji(icon)
-	pagerequest := notion.PageCreateRequest{
+	emoji := notionapi.Emoji(icon)
+	pagerequest := notionapi.PageCreateRequest{
 		Parent: parent,
-		Properties: map[string]notion.Property{
-			"title": notion.TitleProperty{
+		Properties: map[string]notionapi.Property{
+			"title": notionapi.TitleProperty{
 				Type: "title",
-				Title: []notion.RichText{
+				Title: []notionapi.RichText{
 					{
-						Text: notion.Text{
+						Text: &notionapi.Text{
 							Content: title,
 						},
 					},
 				},
 			},
 		},
-		Icon: &notion.Icon{
+		Icon: &notionapi.Icon{
 			Type:  "emoji",
 			Emoji: &emoji,
 		},

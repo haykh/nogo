@@ -3,8 +3,9 @@ package config
 import (
 	"encoding/base64"
 	"fmt"
-	utils "nogo/utils"
 	"os"
+
+	"github.com/haykh/nogo/utils"
 
 	"github.com/BurntSushi/toml"
 	"github.com/haykh/goencode"

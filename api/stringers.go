@@ -1,11 +1,12 @@
-package notionApi
+package api
 
 import (
 	"context"
 	"fmt"
-	"nogo/utils"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/haykh/nogo/utils"
 
 	notion "github.com/jomei/notionapi"
 )

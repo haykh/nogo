@@ -2,11 +2,12 @@ package main
 
 import (
 	"log"
-	"nogo/config"
 	"os"
 	"sort"
 
-	notion "nogo/api"
+	"github.com/haykh/nogo/config"
+
+	notion "github.com/haykh/nogo/api"
 
 	"github.com/urfave/cli/v2"
 )
