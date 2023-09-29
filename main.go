@@ -58,7 +58,7 @@ GLOBAL OPTIONS:
 
 	app := &cli.App{
 		Name:     "nogo",
-		Version:  "1.0.3",
+		Version:  "1.0.4",
 		Compiled: time.Now(),
 		Authors: []*cli.Author{{
 			Name: "@haykh",
