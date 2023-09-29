@@ -84,7 +84,7 @@ GLOBAL OPTIONS:
 				UseShortOptionHandling: true,
 				Action: func(cCtx *cli.Context) error {
 					if client, sID, err := notion.InitAPI(); err != nil {
-						return nil
+						return err
 					} else {
 						return notion.ShowPage(client, sID)
 					}
@@ -96,7 +96,7 @@ GLOBAL OPTIONS:
 						Usage:   "add a new entry to the stack",
 						Action: func(cCtx *cli.Context) error {
 							if client, sID, err := notion.InitAPI(); err != nil {
-								return nil
+								return err
 							} else {
 								return notion.AddToStack(client, sID)
 							}
@@ -108,7 +108,7 @@ GLOBAL OPTIONS:
 						Usage:   "modify a stack entry",
 						Action: func(cCtx *cli.Context) error {
 							if client, sID, err := notion.InitAPI(); err != nil {
-								return nil
+								return err
 							} else {
 								return notion.ModifyStack(client, sID)
 							}
@@ -120,7 +120,7 @@ GLOBAL OPTIONS:
 						Usage:   "toggle stack entries",
 						Action: func(cCtx *cli.Context) error {
 							if client, sID, err := notion.InitAPI(); err != nil {
-								return nil
+								return err
 							} else {
 								return notion.ToggleStack(client, sID)
 							}
@@ -132,7 +132,7 @@ GLOBAL OPTIONS:
 						Usage:   "remove stack entries",
 						Action: func(cCtx *cli.Context) error {
 							if client, sID, err := notion.InitAPI(); err != nil {
-								return nil
+								return err
 							} else {
 								return notion.RmFromStack(client, sID)
 							}

@@ -11,17 +11,17 @@ import (
 
 func ShowPage(client *notion.Client, pageID string) error {
 	if page, err := client.Page.Get(context.Background(), notion.PageID(pageID)); err != nil {
-		return err
+		return fmt.Errorf("failed to get page: %w", err)
 	} else {
 		if err := ShowPageTitle(page); err != nil {
-			return err
+			return fmt.Errorf("failed to show page title: %w", err)
 		}
 		if blocks, err := client.Block.GetChildren(context.Background(), notion.BlockID(pageID), nil); err != nil {
-			return err
+			return fmt.Errorf("failed to get block children: %w", err)
 		} else {
 			for _, block := range blocks.Results {
 				if err := ShowBlock(client, block, 0); err != nil {
-					return err
+					return fmt.Errorf("failed to show the block: %w", err)
 				}
 			}
 			return nil
