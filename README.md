@@ -44,3 +44,14 @@ COMMANDS:
 OPTIONS:
    --help, -h  show help (default: false)
 ```
+
+## Dev
+
+Publishing steps:
+
+```shell
+git commit -m '<COMMENT>'
+git tag <VERSION>
+git push origin <VERSION>
+GOPROXY=proxy.golang.org go list -m github.com/haykh/nogo@<VERSION>
+```
