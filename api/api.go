@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+  "math/rand"
 
 	"github.com/haykh/nogo/config"
 	"github.com/haykh/nogo/utils"
@@ -205,6 +206,30 @@ func ToggleStack(client *notionapi.Client, pageID string) error {
 			return nil
 		}
 	}
+}
+
+func RandomStackEntry(client *notionapi.Client, pageID string) error {
+  if blocks, err := GetStackEntries(client, pageID); err != nil {
+    return err
+  } else {
+    if _, stack, _, err := ParseStackFromBlocks(client, blocks, pageID); err != nil {
+      return err
+    } else {
+      if len(*stack) == 0 {
+        return errors.New("empty stack")
+      }
+      for i := 0; i < 100; i++ {
+        idx := rand.Intn(len(*stack))
+        todo := blocks[idx].(*notionapi.ToDoBlock).ToDo
+        if !todo.Checked {
+          return ShowRichText(todo.RichText, string(utils.ColorGreen) + "Random ToDo: " + string(utils.ColorReset), 2)
+        } else {
+          continue
+        }
+      }
+      return errors.New("no unfinished tasks")
+    }
+  }
 }
 
 func CreatePage(client *notionapi.Client, parentID string, title, icon string) (string, error) {

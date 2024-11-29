@@ -58,7 +58,7 @@ GLOBAL OPTIONS:
 
 	app := &cli.App{
 		Name:     "nogo",
-		Version:  "1.0.5",
+		Version:  "1.6.0",
 		Compiled: time.Now(),
 		Authors: []*cli.Author{{
 			Name: "@haykh",
@@ -123,6 +123,17 @@ GLOBAL OPTIONS:
 								return err
 							} else {
 								return notion.ToggleStack(client, sID)
+							}
+						},
+					},
+					{
+						Name:    "rnd",
+						Usage:   "select a random unfinished task from the stack",
+						Action: func(cCtx *cli.Context) error {
+							if client, sID, err := notion.InitAPI(); err != nil {
+								return err
+							} else {
+                return notion.RandomStackEntry(client, sID)
 							}
 						},
 					},
