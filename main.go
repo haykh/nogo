@@ -58,12 +58,12 @@ GLOBAL OPTIONS:
 
 	app := &cli.App{
 		Name:     "nogo",
-		Version:  "1.0.5",
+		Version:  "1.1.0",
 		Compiled: time.Now(),
 		Authors: []*cli.Author{{
 			Name: "@haykh",
 		}},
-		Usage: "do awesome stuff with notion from a cli",
+		Usage: "tui for doing awesome stuff with notion",
 		Action: func(cCtx *cli.Context) error {
 			return cli.ShowAppHelp(cCtx)
 		},
@@ -73,7 +73,7 @@ GLOBAL OPTIONS:
 				Aliases: []string{"c"},
 				Usage:   "configure nogo",
 				Action: func(cCtx *cli.Context) error {
-					_, err := config.CreateOrReadLocalConfig(false)
+					_, err := config.CreateOrParseConfig(false)
 					return err
 				},
 			},

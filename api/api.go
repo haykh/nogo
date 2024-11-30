@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/haykh/nogo/config"
+	// "github.com/haykh/nogo/config"
 	"github.com/haykh/nogo/utils"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -12,19 +12,20 @@ import (
 )
 
 func InitAPI() (*notionapi.Client, string, error) {
-	if loc_config, err := config.CreateOrReadLocalConfig(true); err != nil {
-		return nil, "", err
-	} else {
-		if token, err := loc_config.GetSecret("api_token"); err != nil {
-			return nil, "", err
-		} else {
-			if stackID, err := loc_config.GetSecret("stack_page_id"); err != nil {
-				return nil, "", err
-			} else {
-				return NewClient(token), stackID, nil
-			}
-		}
-	}
+	return nil, "", nil
+	// if loc_config, err := config.CreateOrReadLocalConfig(true); err != nil {
+	// 	return nil, "", err
+	// } else {
+	// 	if token, err := loc_config.GetSecret("api_token"); err != nil {
+	// 		return nil, "", err
+	// 	} else {
+	// 		if stackID, err := loc_config.GetSecret("stack_page_id"); err != nil {
+	// 			return nil, "", err
+	// 		} else {
+	// 			return NewClient(token), stackID, nil
+	// 		}
+	// 	}
+	// }
 }
 
 func NewClient(token string) *notionapi.Client {

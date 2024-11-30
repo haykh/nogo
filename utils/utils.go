@@ -99,11 +99,31 @@ func Message(msg string, msgtype MessageType, newline bool, color ...ColorType) 
 	}
 }
 
-func PromptBool(msg string, def bool) (bool, error) {
+func Prompt(msg string, canskip bool, def interface{}) (interface{}, error) {
+	switch def.(type) {
+	case string:
+		return PromptString(msg, canskip, def.(string))
+	case bool:
+		return PromptBool(msg, canskip, def.(bool))
+	default:
+		return nil, fmt.Errorf("unsupported type")
+	}
+}
+
+func PromptBool(msg string, canskip, def bool) (bool, error) {
 	val := false
-	prompt := &survey.Confirm{
-		Message: msg,
-		Default: def,
+	var prompt survey.Prompt
+	msg += " pick a new value"
+	if canskip {
+		msg += " or leave blank for default/existing"
+		prompt = &survey.Confirm{
+			Message: msg,
+			Default: def,
+		}
+	} else {
+		prompt = &survey.Confirm{
+			Message: msg,
+		}
 	}
 	if err := survey.AskOne(prompt, &val); err != nil {
 		return false, err
@@ -112,11 +132,20 @@ func PromptBool(msg string, def bool) (bool, error) {
 	}
 }
 
-func PromptString(msg string, def string) (string, error) {
+func PromptString(msg string, canskip bool, def string) (string, error) {
 	val := ""
-	prompt := &survey.Input{
-		Message: msg,
-		Default: def,
+	var prompt survey.Prompt
+	msg += " enter a new value"
+	if canskip {
+		msg += " or leave blank for default/existing"
+		prompt = &survey.Input{
+			Message: msg,
+			Default: def,
+		}
+	} else {
+		prompt = &survey.Input{
+			Message: msg,
+		}
 	}
 	if err := survey.AskOne(prompt, &val); err != nil {
 		return "", err
