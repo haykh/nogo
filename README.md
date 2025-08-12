@@ -1,7 +1,32 @@
 # `nogo`
-## minimalistic `go`-based `cli` app to interact with Notion
+minimalistic `go`-based `cli` app to interact with Notion
 
-### usage
+## installation
+
+on any imperative OS:
+
+```sh
+go install github.com/haykh/nogo@latest
+```
+
+on nixos using flakes (+ home-manager):
+
+```nix
+inputs = {
+  nogo = {
+    url = "github:haykh/nogo";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+};
+
+# ...
+
+home.packages = {
+  inputs.nogo.packages.${pkgs.system}.default
+}
+```
+
+## usage
 
 ```shell
 # list all commands
@@ -45,9 +70,9 @@ OPTIONS:
    --help, -h  show help (default: false)
 ```
 
-## Dev
+## dev
 
-Publishing steps:
+publishing steps:
 
 ```shell
 git commit -m '<COMMENT>'
